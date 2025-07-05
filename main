@@ -30,7 +30,7 @@ headers = {
 headers['User-Agent'] = random.choice(user_agents)
 
 cookies = { # To prevent rate limitation...
-    "insert cookie"
+    ".ROBLOSECURITY":"insert cookie"
 }
 
 def generateID():

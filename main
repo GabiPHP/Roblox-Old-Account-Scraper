@@ -1,0 +1,88 @@
+import threading
+import requests
+import random
+import time
+import json
+
+url = 'https://users.roblox.com/v1/users/'
+
+urlWearing = "https://avatar.roblox.com/v1/users/"
+
+urlPrices = "https://catalog.roblox.com/v1/catalog/items/details"
+
+saveFile = r"Enter save file full location"
+
+threads = int(input("Threads: "))
+minimumPrice = int(input("Minimum Price: "))
+
+user_agents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64)...',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...'
+]
+
+
+headers = {
+    "Content-Type": "application/json",
+    "x-csrf-token": "insert xcsrf token"
+}
+
+
+headers['User-Agent'] = random.choice(user_agents)
+
+cookies = { # To prevent rate limitation...
+    "insert cookie"
+}
+
+def generateID():
+    return random.randint(10001,10000000)
+
+def should_proceed(r):
+    return not ('errors' in r or r.get('isBanned'))
+
+
+def Scan():
+    while 1:
+        id = str(generateID())
+        getInfo = requests.get(url+id,headers=headers,cookies=cookies)
+
+
+        if should_proceed(getInfo.json()):
+            name = getInfo.json()['name']
+
+            wearing = requests.get(urlWearing+id+'/currently-wearing',headers=headers,cookies=cookies).json()
+
+            assetIds = wearing['assetIds']
+            itemsList = {"items":[]}
+
+            for i in range(len(assetIds)):
+                listItem = {"itemType":"Asset","id":assetIds[i]}
+                itemsList["items"].append(listItem)
+            
+            getPrices = requests.post(urlPrices, headers=headers, data=json.dumps(itemsList),cookies=cookies)
+
+            if("errors" in getPrices.json()):
+                if("1" in threading.current_thread().name):
+                    print("Too many requests! Waiting 1 Minute",threading.current_thread().name)
+                time.sleep(60)
+
+            else:
+                data = getPrices.json()["data"]
+                avatarPrice = 0
+
+                for i in range(len(data)):
+                    if(data[i]["saleLocationType"]!="NotApplicable"):
+                        avatarPrice += data[i]["lowestPrice"]
+
+                if(avatarPrice>minimumPrice):
+                    with open(saveFile,"a") as f:
+                        f.write(f"ID: {id} - Price: {avatarPrice} - \n")
+
+                print("ID:",id,"- Name:",name,"- Avatar Price: ",avatarPrice)
+
+
+
+
+for i in range(threads):
+    function = threading.Thread(target=Scan)
+    function.start()
+    
